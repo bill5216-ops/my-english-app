@@ -1,3 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>英文常用句 999 練習</title>
+    <style>
+        body { font-family: "Microsoft JhengHei", -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
+        .container { max-width: 500px; margin: auto; background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #1877f2, #0052cc); color: white; padding: 25px; text-align: center; }
+        #startBtn { width: 90%; margin: 15px 5%; padding: 15px; background: #42b72a; color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        #startBtn:active { transform: scale(0.95); }
+        .sentence-item { display: flex; align-items: center; padding: 18px 15px; border-bottom: 1px solid #f0f0f0; }
+        .num { width: 35px; color: #1877f2; font-weight: bold; font-size: 0.9rem; }
+        .content { flex: 1; padding-right: 10px; }
+        .en { font-size: 1.15rem; font-weight: 600; color: #1c1e21; margin-bottom: 4px; }
+        .zh { font-size: 0.95rem; color: #65676b; }
+        .btn-group { display: flex; gap: 10px; }
+        .play-btn { border: none; background: #e7f3ff; color: #1877f2; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
+        .slow-btn { background: #fff4e5; color: #ff8800; }
+        .pagination { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #f8f9fa; }
+        .nav-btn { background: #1877f2; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; }
+        .nav-btn:disabled { background: #e4e6eb; color: #bcc0c4; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header"><h2 style="margin:0">英文常用句練習</h2></div>
+    <button id="startBtn" onclick="initVoice()">第一步：點此啟動語音</button>
+    <div id="list"></div>
+    <div class="pagination">
+        <button id="prevBtn" class="nav-btn" onclick="changePage(-1)">上一頁</button>
+        <span id="pageInfo">第 1 頁</span>
+        <button id="nextBtn" class="nav-btn" onclick="changePage(1)">下一頁</button>
+    </div>
+</div>
+
+<script>
+    // 這裡放入您的 999 句資料
+    const rawData = `
 
 1. I see． 我明白了。
  
@@ -2042,3 +2083,78 @@ English.儘管我很煩英語，我還是要學它。
  
 999. There are mice next to the refrigerator, under the sink and inside the cupboard!冰箱邊、洗碗槽下，還有櫥櫃裡面都有老鼠!
 
+
+`;
+
+    const allLines = rawData.trim().split('\n').filter(l => l.trim() !== '').map(line => {
+        const clean = line.replace(/^\d+\.\s*/, '');
+        const enPart = clean.match(/[a-zA-Z\s\p{P}]+/u);
+        const en = enPart ? enPart[0].trim() : clean;
+        const zh = clean.replace(en, "").trim();
+        return { english: en, chinese: zh };
+    });
+
+    let currentPage = 0;
+    const perPage = 10;
+    const synth = window.speechSynthesis;
+
+    function initVoice() {
+        speak("System Ready", 1.0);
+        document.getElementById('startBtn').innerText = "語音系統已就緒";
+        document.getElementById('startBtn').style.background = "#888";
+        document.getElementById('startBtn').disabled = true;
+    }
+
+    function render() {
+        const listDiv = document.getElementById('list');
+        listDiv.innerHTML = '';
+        const start = currentPage * perPage;
+        const end = Math.min(start + perPage, allLines.length);
+        
+        for (let i = start; i < end; i++) {
+            const item = document.createElement('div');
+            item.className = 'sentence-item';
+            item.innerHTML = `
+                <div class="num">${i + 1}</div>
+                <div class="content">
+                    <div class="en">${allLines[i].english}</div>
+                    <div class="zh">${allLines[i].chinese}</div>
+                </div>
+                <div class="btn-group">
+                    <button class="play-btn" onclick="speak('${allLines[i].english.replace(/'/g, "\\'")}', 0.85)">🔊</button>
+                    <button class="play-btn slow-btn" onclick="speak('${allLines[i].english.replace(/'/g, "\\'")}', 0.5)">🐢</button>
+                </div>
+            `;
+            listDiv.appendChild(item);
+        }
+        document.getElementById('pageInfo').innerText = `第 ${currentPage + 1} 頁 / 共 ${Math.ceil(allLines.length/perPage)} 頁`;
+        document.getElementById('prevBtn').disabled = (currentPage === 0);
+        document.getElementById('nextBtn').disabled = (end >= allLines.length);
+    }
+
+    function speak(text, rate) {
+        synth.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        const voices = synth.getVoices();
+        // 優先選擇生動的人聲
+        const preferredVoice = voices.find(v => v.name.includes('Samantha') || v.name.includes('Alex')) || voices.find(v => v.lang.includes('en-US'));
+        if (preferredVoice) utter.voice = preferredVoice;
+        
+        utter.lang = 'en-US';
+        utter.rate = rate; // 使用傳入的速度
+        utter.pitch = 1.1; // 稍微提高音調讓聲音更清亮
+        synth.speak(utter);
+    }
+
+    function changePage(step) {
+        currentPage += step;
+        render();
+        window.scrollTo(0,0);
+    }
+
+    // 預加載語音清單
+    window.speechSynthesis.onvoiceschanged = () => { synth.getVoices(); };
+    render();
+</script>
+</body>
+</html>
